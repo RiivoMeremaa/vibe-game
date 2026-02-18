@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tank Survival</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            color: #fff;
+        }
+        canvas { display: block; cursor: crosshair; }
+        #ui-overlay {
+            position: absolute;
+            top: 10px; left: 10px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        #wave-banner {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: #ff4444;
+            text-shadow: 0 0 20px rgba(255,68,68,0.8);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 20;
+            text-align: center;
+            line-height: 1.3;
+        }
+        #shop-panel {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.94);
+            border: 2px solid #ffaa00;
+            border-radius: 12px;
+            padding: 30px;
+            display: none;
+            z-index: 30;
+            min-width: 660px;
+            max-height: 92vh;
+            overflow-y: auto;
+            box-shadow: 0 0 40px rgba(255,170,0,0.3);
+        }
+        #shop-panel h2 {
+            text-align: center;
+            color: #ffaa00;
+            margin-bottom: 20px;
+            font-size: 28px;
+            text-shadow: 0 0 10px rgba(255,170,0,0.5);
+        }
+        .shop-section { margin-bottom: 20px; }
+        .shop-section h3 {
+            color: #aaa;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+        .shop-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .shop-btn {
+            background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+            border: 1px solid #555;
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+            pointer-events: all;
+        }
+        .shop-btn:hover {
+            border-color: #ffaa00;
+            background: linear-gradient(135deg, #3a3a2a, #2a2a1a);
+            box-shadow: 0 0 10px rgba(255,170,0,0.2);
+        }
+        .shop-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            border-color: #333;
+        }
+        .shop-btn:disabled:hover {
+            background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+            box-shadow: none;
+        }
+        .btn-name { font-weight: bold; font-size: 14px; color: #ffaa00; }
+        .btn-cost { color: #ffcc44; font-size: 12px; }
+        .btn-desc { color: #999; font-size: 11px; margin-top: 2px; }
+        .btn-level { color: #66ff66; font-size: 11px; }
+        .btn-bonus { color: #ff66ff; font-size: 11px; }
+        .btn-stat { color: #88ccff; font-size: 11px; }
+        #continue-btn {
+            display: block;
+            margin: 20px auto 0;
+            background: linear-gradient(135deg, #ff6600, #cc4400);
+            border: none;
+            color: #fff;
+            padding: 14px 50px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            pointer-events: all;
+            transition: all 0.2s;
+        }
+        #continue-btn:hover {
+            background: linear-gradient(135deg, #ff8833, #ee5500);
+            box-shadow: 0 0 20px rgba(255,102,0,0.4);
+        }
+        #game-over {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            display: none;
+            z-index: 40;
+        }
+        #game-over h1 {
+            font-size: 64px;
+            color: #ff2222;
+            text-shadow: 0 0 30px rgba(255,0,0,0.6);
+        }
+        #game-over p { color: #aaa; font-size: 20px; margin: 10px 0; }
+        #restart-btn {
+            background: linear-gradient(135deg, #ff4444, #cc2222);
+            border: none;
+            color: #fff;
+            padding: 14px 50px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.2s;
+        }
+        #restart-btn:hover {
+            background: linear-gradient(135deg, #ff6666, #ee3333);
+            box-shadow: 0 0 20px rgba(255,50,50,0.4);
+        }
+        #hud {
+            position: absolute;
+            bottom: 10px; left: 10px;
+            pointer-events: none;
+            z-index: 10;
+            font-size: 13px;
+        }
+        .hud-bar {
+            width: 220px;
+            height: 18px;
+            background: #222;
+            border: 1px solid #555;
+            border-radius: 9px;
+            margin: 4px 0;
+            overflow: hidden;
+            position: relative;
+        }
+        .hud-bar-fill {
+            height: 100%;
+            border-radius: 9px;
+            transition: width 0.3s;
+        }
+        .hud-bar-text {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            text-shadow: 0 0 3px #000;
+        }
+        #crit-flash {
+            position: absolute;
+            pointer-events: none;
+            z-index: 15;
+            font-size: 22px;
+            font-weight: bold;
+            color: #ffdd00;
+            text-shadow: 0 0 10px #ffaa00, 0 0 20px #ff6600;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="game"></canvas>
+
+    <div id="ui-overlay">
+        <div style="font-size:16px;color:#ffaa00;font-weight:bold;" id="wave-text">Wave: 1</div>
+        <div style="font-size:14px;color:#ffcc44;" id="coins-text">💰 Coins: 0</div>
+        <div style="font-size:12px;color:#aaa;margin-top:4px;" id="kills-text">Kills: 0</div>
+        <div style="font-size:12px;color:#ff6666;margin-top:2px;" id="enemies-text">Enemies: 0</div>
+        <div style="font-size:12px;color:#ff44ff;margin-top:2px;display:none;" id="boss-text">⚠️ BOSS INCOMING</div>
+        <div style="font-size:11px;color:#ffdd00;margin-top:4px;" id="crit-text">🎯 Crit: 0% | 1.50x</div>
+    </div>
+
+    <div id="hud">
+        <div>❤️ Health</div>
+        <div class="hud-bar">
+            <div class="hud-bar-fill" id="health-bar" style="background:linear-gradient(90deg,#ff4444,#ff6666);width:100%"></div>
+            <div class="hud-bar-text" id="health-text">100 / 100</div>
+        </div>
+        <div style="margin-top:6px;">🛡️ Armor</div>
+        <div class="hud-bar">
+            <div class="hud-bar-fill" id="armor-bar" style="background:linear-gradient(90deg,#4488ff,#66aaff);width:100%"></div>
+            <div class="hud-bar-text" id="armor-text">0 / 0</div>
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:#666;">WASD to move | Mouse to aim & shoot</div>
+        <div style="font-size:11px;color:#666;">Turrets auto-fire | Tesla zaps AoE</div>
+    </div>
+
+    <div id="wave-banner"></div>
+    <div id="crit-flash"></div>
+
+    <div id="shop-panel">
+        <h2>⚙️ UPGRADE SHOP</h2>
+        <div id="shop-coins" style="text-align:center;color:#ffcc44;font-size:18px;margin-bottom:15px;">💰 Coins: 0</div>
+
+        <div class="shop-section">
+            <h3>🎖️ Tank Upgrades</h3>
+            <div class="shop-grid" id="tank-upgrades"></div>
+        </div>
+
+        <div class="shop-section">
+            <h3>🏗️ Gun Turrets (Max 4)</h3>
+            <div class="shop-grid" id="turret-shop"></div>
+        </div>
+
+        <div class="shop-section">
+            <h3>⚡ Tesla Turrets (Max 4)</h3>
+            <div class="shop-grid" id="tesla-shop"></div>
+        </div>
+
+        <button id="continue-btn">▶ NEXT WAVE</button>
+    </div>
+
+    <div id="game-over">
+        <h1>GAME OVER</h1>
+        <p id="go-wave">You reached wave 1</p>
+        <p id="go-kills">Total kills: 0</p>
+        <button id="restart-btn">🔄 Restart</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        let game = {};
+        const keys = {};
+        let mouseX = 0, mouseY = 0, mouseDown = false;
+        let critFloats = [];
+
+        const MAX_LEVEL = 50;
+        const CRIT_CHANCE_MAX = 20;   // 20 levels × 5% = 100%
+        const CRIT_DMG_MAX = 70;      // 1.50 + 70×0.05 = 5.00x
+
+        // ─── SCALING: every 10 levels the per-level bonus increases ───
+        // Tier 0 (lvl 1-10), Tier 1 (lvl 11-20), Tier 2 (21-30), Tier 3 (31-40), Tier 4 (41-50)
+        function getTier(level) { return Math.floor(level / 10); }
+        function getTierMultiplier(level) { return 1 + getTier(level) * 0.5; }
+        // e.g. tier 0 = 1x, tier 1 = 1.5x, tier 2 = 2x, tier 3 = 2.5x, tier 4 = 3x
+
+        function getScaledValue(basePerLevel, level) {
+            // Sum of all levels with their tier multipliers
+            let total = 0;
+            for (let i = 0; i < level; i++) {
+                total += basePerLevel * (1 + Math.floor(i / 10) * 0.5);
+            }
+            return total;
+        }
+
+        function getNextLevelValue(basePerLevel, currentLevel) {
+            return basePerLevel * (1 + Math.floor(currentLevel / 10) * 0.5);
+        }
+
+        function initGame() {
+            game = {
+                wave: 0, coins: 0, kills: 0,
+                state: 'playing',
+                enemies: [], bullets: [], enemyBullets: [],
+                particles: [], turrets: [], teslas: [],
+                teslaArcs: [],
+                player: {
+                    x: canvas.width / 2, y: canvas.height / 2,
+                    angle: 0,
+                    size: 22, lastShot: 0,
+                    // Base stats
+                    speedLvl: 0, damageLvl: 0, healthLvl: 0,
+                    armorLvl: 0, fireRateLvl: 0,
+                    critChanceLvl: 0, critDmgLvl: 0,
+                },
+                turretFireRateLvl: 0, turretDamageLvl: 0, turretRangeLvl: 0,
+                teslaDamageLvl: 0, teslaRangeLvl: 0,
+                continuousSpawnInterval: 0, continuousSpawnTimer: 0,
+                totalWaveEnemies: 0, spawnedThisWave: 0,
+                waveActive: false, waveBannerTimer: 0,
+                bossWave: false, bossSpawned: false,
+            };
+            critFloats = [];
+            startWave();
+        }
+
+        // ─── COMPUTED PLAYER STATS ───
+        function getPlayerStats() {
+            const p = game.player;
+            return {
+                speed:     3 + getScaledValue(0.4, p.speedLvl),
+                damage:    10 + getScaledValue(5, p.damageLvl),
+                maxHealth: 100 + getScaledValue(25, p.healthLvl),
+                maxArmor:  getScaledValue(15, p.armorLvl),
+                fireRate:  Math.max(30, 200 - getScaledValue(3, p.fireRateLvl)),
+                critChance: Math.min(1.0, p.critChanceLvl * 0.05),
+                critDmg:   1.5 + p.critDmgLvl * 0.05,
+            };
+        }
+
+        // ─── TURRET COMPUTED STATS ───
+        function getTurretRange() { return 300 + getScaledValue(20, game.turretRangeLvl); }
+        function getTurretDmg()   { return 8 + getScaledValue(3, game.turretDamageLvl); }
+        function getTurretFR()    { return Math.max(80, 600 - getScaledValue(10, game.turretFireRateLvl)); }
+        function getTeslaDmg()    { return 6 + getScaledValue(2, game.teslaDamageLvl); }
+        function getTeslaRange()  { return 200 + getScaledValue(20, game.teslaRangeLvl); }
+
+        // ─── UPGRADE COSTS ───
+        // Cost scales with tier — higher tiers cost more
+        const upgradeCosts = {
+            speed:      { base: 50,  mult: 1.10 },
+            damage:     { base: 60,  mult: 1.10 },
+            health:     { base: 40,  mult: 1.08 },
+            armor:      { base: 55,  mult: 1.10 },
+            fireRate:   { base: 45,  mult: 1.10 },
+            critChance: { base: 80,  mult: 1.18 },
+            critDmg:    { base: 65,  mult: 1.08 },
+        };
+
+        function getUpgradeCost(type, level) {
+            const u = upgradeCosts[type];
+            const tierBonus = 1 + getTier(level) * 0.3;
+            return Math.floor(u.base * Math.pow(u.mult, level) * tierBonus);
+        }
+
+        function getTurretCost() { return 100 + game.turrets.length * 80; }
+        function getTeslaCost()  { return 150 + game.teslas.length * 120; }
+
+        function getTurretUpgradeCost(type, level) {
+            const bases = { firerate: 70, damage: 80, range: 75 };
+            const tierBonus = 1 + getTier(level) * 0.3;
+            return Math.floor((bases[type] || 75) * Math.pow(1.10, level) * tierBonus);
+        }
+        function getTeslaUpgradeCost(type, level) {
+            const bases = { damage: 90, range: 85 };
+            const tierBonus = 1 + getTier(level) * 0.3;
+            return Math.floor((bases[type] || 85) * Math.pow(1.10, level) * tierBonus);
+        }
+
+        // ─── WAVE SYSTEM ───
+        function getWaveEnemyCount(wave) {
+            return wave * 2 + 1 + Math.floor(Math.random() * (wave + 2));
+        }
+
+        function startWave() {
+            game.wave++;
+            game.totalWaveEnemies = getWaveEnemyCount(game.wave);
+            game.spawnedThisWave = 0;
+            game.waveActive = true;
+            game.bossWave = (game.wave % 5 === 0);
+            game.bossSpawned = false;
+            game.continuousSpawnInterval = Math.max(15, 50 - game.wave * 2);
+            game.continuousSpawnTimer = 0;
+            if (game.bossWave) {
+                showWaveBanner(`⚠️ WAVE ${game.wave} — BOSS ⚠️\n${game.totalWaveEnemies} enemies + BOSS`);
+                document.getElementById('boss-text').style.display = 'block';
+            } else {
+                showWaveBanner(`WAVE ${game.wave} — ${game.totalWaveEnemies} enemies`);
+                document.getElementById('boss-text').style.display = 'none';
+            }
+        }
+
+        function showWaveBanner(text) {
+            const banner = document.getElementById('wave-banner');
+            banner.textContent = text;
+            banner.style.opacity = 1;
+            game.waveBannerTimer = 150;
+        }
+
+        function getSpawnPos() {
+            const side = Math.floor(Math.random() * 4);
+            const m = 60;
+            switch(side) {
+                case 0: return { x: -m, y: Math.random() * canvas.height };
+                case 1: return { x: canvas.width + m, y: Math.random() * canvas.height };
+                case 2: return { x: Math.random() * canvas.width, y: -m };
+                case 3: return { x: Math.random() * canvas.width, y: canvas.height + m };
+            }
+        }
+
+        function spawnEnemy() {
+            const pos = getSpawnPos();
+            const waveScale = 1 + (game.wave - 1) * 0.18;
+            const types = ['basic','fast','tank','sniper'];
+            const weights = [Math.max(10,50-game.wave*2), 20+game.wave*2, 10+game.wave*3, 5+game.wave*2];
+            const tw = weights.reduce((a,b)=>a+b,0);
+            let r = Math.random()*tw, type='basic';
+            for(let i=0;i<types.length;i++){r-=weights[i];if(r<=0){type=types[i];break;}}
+            const templates = {
+                basic:  {health:30,speed:1.5,damage:8,fireRate:1500,size:18,color:'#ff4444',coins:10},
+                fast:   {health:20,speed:3.0,damage:5,fireRate:1200,size:14,color:'#ffaa00',coins:15},
+                tank:   {health:80,speed:0.8,damage:15,fireRate:2000,size:26,color:'#aa22aa',coins:25},
+                sniper: {health:25,speed:1.0,damage:20,fireRate:2500,size:16,color:'#22aaff',coins:20},
+            };
+            const t = templates[type];
+            game.enemies.push({
+                x:pos.x,y:pos.y,type,isBoss:false,
+                health:Math.floor(t.health*waveScale),maxHealth:Math.floor(t.health*waveScale),
+                speed:t.speed+(game.wave-1)*0.06,damage:Math.floor(t.damage*waveScale),
+                fireRate:Math.max(400,t.fireRate-game.wave*30),
+                lastShot:Date.now()+800+Math.random()*1200,
+                size:t.size,color:t.color,coins:t.coins+Math.floor(game.wave*2),angle:0,
+            });
+        }
+
+        function spawnBoss() {
+            const pos = getSpawnPos();
+            const bossNum = Math.floor(game.wave/5);
+            const scale = 1+bossNum*0.6;
+            const bossGold = 100+bossNum*60+game.wave*10;
+            game.enemies.push({
+                x:pos.x,y:pos.y,type:'boss',isBoss:true,
+                health:Math.floor(300*scale),maxHealth:Math.floor(300*scale),
+                speed:0.7+bossNum*0.1,damage:Math.floor(25*scale),
+                fireRate:Math.max(300,1200-bossNum*100),lastShot:Date.now()+500,
+                size:40+bossNum*4,color:'#ff00ff',coins:bossGold,angle:0,
+                burstCount:0,burstMax:3+bossNum,burstTimer:0,isBursting:false,
+            });
+        }
+
+        function spawnParticles(x,y,color,count) {
+            for(let i=0;i<count;i++){
+                const a=Math.random()*Math.PI*2,s=1+Math.random()*3;
+                game.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,
+                    life:20+Math.random()*20,maxLife:40,color,size:2+Math.random()*3});
+            }
+        }
+
+        function createTeslaArc(x1,y1,x2,y2) {
+            const segs=[];const steps=8;
+            for(let i=0;i<=steps;i++){
+                const t=i/steps;
+                segs.push({x:x1+(x2-x1)*t+(i>0&&i<steps?(Math.random()-0.5)*30:0),
+                           y:y1+(y2-y1)*t+(i>0&&i<steps?(Math.random()-0.5)*30:0)});
+            }
+            game.teslaArcs.push({segments:segs,life:8});
+        }
+
+        // ─── CRIT FLOAT TEXT ───
+        function spawnCritFloat(x, y, dmg) {
+            critFloats.push({
+                x, y, text: `CRIT! ${Math.floor(dmg)}`,
+                life: 50, maxLife: 50,
+                vy: -2,
+            });
+        }
+
+        // ─── INPUT ───
+        window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+        window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+        canvas.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+        canvas.addEventListener('mousedown', () => mouseDown = true);
+        canvas.addEventListener('mouseup', () => mouseDown = false);
+
+        // ─── UPDATE ───
+        function update() {
+            if (game.state !== 'playing') return;
+            const p = game.player;
+            const stats = getPlayerStats();
+
+            // Movement
+            let dx=0,dy=0;
+            if(keys['w']||keys['arrowup'])dy-=1;
+            if(keys['s']||keys['arrowdown'])dy+=1;
+            if(keys['a']||keys['arrowleft'])dx-=1;
+            if(keys['d']||keys['arrowright'])dx+=1;
+            if(dx!==0&&dy!==0){dx*=0.707;dy*=0.707;}
+            p.x+=dx*stats.speed; p.y+=dy*stats.speed;
+            p.x=Math.max(p.size,Math.min(canvas.width-p.size,p.x));
+            p.y=Math.max(p.size,Math.min(canvas.height-p.size,p.y));
+            p.angle=Math.atan2(mouseY-p.y,mouseX-p.x);
+
+            // Sync health/armor caps
+            if (p.health === undefined) p.health = stats.maxHealth;
+            if (p.armor === undefined) p.armor = 0;
+
+            // Player shoot
+            if(mouseDown && Date.now()-p.lastShot>=stats.fireRate){
+                p.lastShot=Date.now();
+                const bx=p.x+Math.cos(p.angle)*(p.size+10);
+                const by=p.y+Math.sin(p.angle)*(p.size+10);
+                // Crit roll
+                const isCrit = Math.random() < stats.critChance;
+                const finalDmg = isCrit ? stats.damage * stats.critDmg : stats.damage;
+                game.bullets.push({
+                    x:bx,y:by,vx:Math.cos(p.angle)*8,vy:Math.sin(p.angle)*8,
+                    damage:finalDmg,life:100,owner:'player',isCrit,
+                });
+            }
+
+            // Gun turrets
+            const tRange = getTurretRange(), tDmg = getTurretDmg(), tFR = getTurretFR();
+            game.turrets.forEach(t => {
+                let nearest=null,nearDist=Infinity;
+                game.enemies.forEach(e=>{const d=dist(t.x,t.y,e.x,e.y);if(d<nearDist){nearDist=d;nearest=e;}});
+                if(nearest&&nearDist<tRange){
+                    t.angle=Math.atan2(nearest.y-t.y,nearest.x-t.x);
+                    if(Date.now()-t.lastShot>=tFR){
+                        t.lastShot=Date.now();
+                        game.bullets.push({
+                            x:t.x+Math.cos(t.angle)*20,y:t.y+Math.sin(t.angle)*20,
+                            vx:Math.cos(t.angle)*7,vy:Math.sin(t.angle)*7,
+                            damage:tDmg,life:80,owner:'turret',isCrit:false,
+                        });
+                    }
+                }
+            });
+
+            // Tesla turrets
+            const teRange=getTeslaRange(),teDmg=getTeslaDmg();
+            game.teslas.forEach(t=>{
+                if(Date.now()-t.lastShot>=1200){
+                    const inR=game.enemies.filter(e=>dist(t.x,t.y,e.x,e.y)<teRange);
+                    if(inR.length>0){
+                        t.lastShot=Date.now();
+                        inR.forEach(e=>{
+                            e.health-=teDmg;
+                            createTeslaArc(t.x,t.y,e.x,e.y);
+                            spawnParticles(e.x,e.y,'#44ffff',3);
+                            if(e.health<=0){spawnParticles(e.x,e.y,'#44ffff',10);game.coins+=e.coins;game.kills++;e._dead=true;}
+                        });
+                        game.enemies=game.enemies.filter(e=>!e._dead);
+                        t.pulseTimer=15;
+                    }
+                }
+                if(t.pulseTimer>0)t.pulseTimer--;
+            });
+
+            // Spawn
+            if(game.waveActive&&game.spawnedThisWave<game.totalWaveEnemies){
+                game.continuousSpawnTimer++;
+                if(game.continuousSpawnTimer>=game.continuousSpawnInterval){
+                    game.continuousSpawnTimer=0;
+                    const burst=Math.min(1+Math.floor(game.wave/4),game.totalWaveEnemies-game.spawnedThisWave);
+                    for(let i=0;i<burst;i++){spawnEnemy();game.spawnedThisWave++;}
+                }
+            }
+            if(game.bossWave&&!game.bossSpawned&&game.spawnedThisWave>=Math.floor(game.totalWaveEnemies/2)){
+                game.bossSpawned=true;spawnBoss();showWaveBanner('💀 BOSS APPEARS! 💀');
+            }
+            const allSpawned=game.spawnedThisWave>=game.totalWaveEnemies&&(game.bossWave?game.bossSpawned:true);
+            if(game.waveActive&&allSpawned&&game.enemies.length===0){
+                game.waveActive=false;
+                document.getElementById('boss-text').style.display='none';
+                openShop();
+            }
+
+            // Enemy AI
+            game.enemies.forEach(e=>{
+                const angle=Math.atan2(p.y-e.y,p.x-e.x);
+                e.angle=angle;
+                const d=dist(e.x,e.y,p.x,p.y);
+                const minD=e.type==='sniper'?250:e.isBoss?150:80;
+                if(d>minD){e.x+=Math.cos(angle)*e.speed;e.y+=Math.sin(angle)*e.speed;}
+                if(e.isBoss){
+                    if(e.isBursting){
+                        e.burstTimer++;
+                        if(e.burstTimer%8===0){
+                            const sp=(Math.random()-0.5)*0.3;
+                            game.enemyBullets.push({x:e.x+Math.cos(angle+sp)*(e.size+5),y:e.y+Math.sin(angle+sp)*(e.size+5),
+                                vx:Math.cos(angle+sp)*6,vy:Math.sin(angle+sp)*6,damage:e.damage,life:90,isBoss:true});
+                            e.burstCount++;
+                            if(e.burstCount>=e.burstMax){e.isBursting=false;e.burstCount=0;e.lastShot=Date.now();}
+                        }
+                    } else if(Date.now()-e.lastShot>=e.fireRate&&d<600){e.isBursting=true;e.burstTimer=0;e.burstCount=0;}
+                } else {
+                    if(Date.now()-e.lastShot>=e.fireRate&&d<500){
+                        e.lastShot=Date.now();
+                        game.enemyBullets.push({x:e.x+Math.cos(angle)*(e.size+5),y:e.y+Math.sin(angle)*(e.size+5),
+                            vx:Math.cos(angle)*5,vy:Math.sin(angle)*5,damage:e.damage,life:80,isBoss:false});
+                    }
+                }
+            });
+
+            // Player bullets
+            game.bullets=game.bullets.filter(b=>{
+                b.x+=b.vx;b.y+=b.vy;b.life--;
+                if(b.life<=0)return false;
+                for(let i=game.enemies.length-1;i>=0;i--){
+                    const e=game.enemies[i];
+                    if(dist(b.x,b.y,e.x,e.y)<e.size){
+                        e.health-=b.damage;
+                        if(b.isCrit){
+                            spawnParticles(b.x,b.y,'#ffdd00',8);
+                            spawnCritFloat(b.x,b.y,b.damage);
+                        } else {
+                            spawnParticles(b.x,b.y,'#ffff66',4);
+                        }
+                        if(e.health<=0){
+                            spawnParticles(e.x,e.y,e.color,e.isBoss?30:12);
+                            game.coins+=e.coins;game.kills++;game.enemies.splice(i,1);
+                        }
+                        return false;
+                    }
+                }
+                return true;
+            });
+
+            // Enemy bullets
+            game.enemyBullets=game.enemyBullets.filter(b=>{
+                b.x+=b.vx;b.y+=b.vy;b.life--;
+                if(b.life<=0)return false;
+                if(dist(b.x,b.y,p.x,p.y)<p.size){
+                    let dmg=b.damage;
+                    const currentArmor = p.armor || 0;
+                    if(currentArmor>0){
+                        const ab=Math.min(currentArmor,dmg*0.6);
+                        p.armor-=ab;dmg-=ab;
+                    }
+                    p.health-=dmg;
+                    spawnParticles(b.x,b.y,'#ff4444',5);
+                    if(p.health<=0)gameOver();
+                    return false;
+                }
+                return true;
+            });
+
+            // Particles
+            game.particles=game.particles.filter(pt=>{pt.x+=pt.vx;pt.y+=pt.vy;pt.vx*=0.96;pt.vy*=0.96;pt.life--;return pt.life>0;});
+            game.teslaArcs=game.teslaArcs.filter(a=>{a.life--;return a.life>0;});
+
+            // Crit floats
+            critFloats=critFloats.filter(f=>{f.y+=f.vy;f.life--;return f.life>0;});
+
+            if(game.waveBannerTimer>0){game.waveBannerTimer--;if(game.waveBannerTimer<=0)document.getElementById('wave-banner').style.opacity=0;}
+
+            // HUD
+            document.getElementById('wave-text').textContent=`Wave: ${game.wave}${game.bossWave?' ⚠️ BOSS':''}`;
+            document.getElementById('coins-text').textContent=`💰 Coins: ${game.coins}`;
+            document.getElementById('kills-text').textContent=`Kills: ${game.kills}`;
+            const rem=(game.totalWaveEnemies-game.spawnedThisWave)+game.enemies.length+(game.bossWave&&!game.bossSpawned?1:0);
+            document.getElementById('enemies-text').textContent=`Enemies remaining: ${rem}`;
+            document.getElementById('crit-text').textContent=`🎯 Crit: ${Math.floor(stats.critChance*100)}% | ${stats.critDmg.toFixed(2)}x`;
+
+            const hpPct=Math.max(0,p.health/stats.maxHealth*100);
+            document.getElementById('health-bar').style.width=hpPct+'%';
+            document.getElementById('health-text').textContent=`${Math.ceil(p.health)} / ${stats.maxHealth}`;
+            const apPct=stats.maxArmor>0?Math.max(0,(p.armor||0)/stats.maxArmor*100):0;
+            document.getElementById('armor-bar').style.width=apPct+'%';
+            document.getElementById('armor-text').textContent=`${Math.ceil(p.armor||0)} / ${stats.maxArmor}`;
+        }
+
+        // ─── DRAW ───
+        function draw() {
+            ctx.fillStyle='#1a1a2e';ctx.fillRect(0,0,canvas.width,canvas.height);
+            ctx.strokeStyle='#222240';ctx.lineWidth=1;
+            for(let x=0;x<canvas.width;x+=50){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}
+            for(let y=0;y<canvas.height;y+=50){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
+
+            // Gun turrets
+            const tRange=getTurretRange();
+            game.turrets.forEach(t=>{
+                ctx.save();ctx.translate(t.x,t.y);
+                ctx.fillStyle='#445566';ctx.strokeStyle='#667788';ctx.lineWidth=2;
+                ctx.beginPath();ctx.arc(0,0,18,0,Math.PI*2);ctx.fill();ctx.stroke();
+                ctx.rotate(t.angle);ctx.fillStyle='#778899';
+                ctx.fillRect(8,-4,18,8);ctx.strokeRect(8,-4,18,8);
+                ctx.rotate(-t.angle);ctx.fillStyle='#99bbcc';
+                ctx.beginPath();ctx.arc(0,0,5,0,Math.PI*2);ctx.fill();
+                ctx.restore();
+                ctx.strokeStyle='rgba(100,150,200,0.08)';ctx.beginPath();ctx.arc(t.x,t.y,tRange,0,Math.PI*2);ctx.stroke();
+            });
+
+            // Tesla turrets
+            const teRange=getTeslaRange();
+            game.teslas.forEach(t=>{
+                const pulse=t.pulseTimer>0?1+(t.pulseTimer/15)*0.3:1;
+                ctx.strokeStyle=`rgba(68,255,255,${t.pulseTimer>0?0.15:0.06})`;
+                ctx.lineWidth=t.pulseTimer>0?2:1;
+                ctx.beginPath();ctx.arc(t.x,t.y,teRange,0,Math.PI*2);ctx.stroke();
+                ctx.save();ctx.translate(t.x,t.y);
+                if(t.pulseTimer>0){ctx.shadowColor='#44ffff';ctx.shadowBlur=20*pulse;}
+                ctx.fillStyle='#2a4a4a';ctx.strokeStyle='#44ffff';ctx.lineWidth=2;ctx.beginPath();
+                for(let i=0;i<6;i++){const a=(Math.PI/3)*i-Math.PI/6;const r=20*pulse;if(i===0)ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r);else ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);}
+                ctx.closePath();ctx.fill();ctx.stroke();ctx.shadowBlur=0;
+                ctx.fillStyle='#44ffff';ctx.beginPath();ctx.arc(0,0,6*pulse,0,Math.PI*2);ctx.fill();
+                ctx.fillStyle='#88ffff';
+                for(let i=0;i<3;i++){const sa=Date.now()*0.005+(Math.PI*2/3)*i;ctx.beginPath();ctx.arc(Math.cos(sa)*12,Math.sin(sa)*12,2,0,Math.PI*2);ctx.fill();}
+                ctx.restore();
+            });
+
+            // Tesla arcs
+            game.teslaArcs.forEach(arc=>{
+                const alpha=arc.life/8;
+                ctx.strokeStyle=`rgba(68,255,255,${alpha})`;ctx.lineWidth=2;
+                ctx.shadowColor='#44ffff';ctx.shadowBlur=10;ctx.beginPath();
+                arc.segments.forEach((s,i)=>{if(i===0)ctx.moveTo(s.x,s.y);else ctx.lineTo(s.x,s.y);});
+                ctx.stroke();ctx.shadowBlur=0;
+            });
+
+            // Enemies
+            game.enemies.forEach(e=>{
+                ctx.save();ctx.translate(e.x,e.y);
+                ctx.fillStyle='rgba(0,0,0,0.3)';ctx.beginPath();ctx.ellipse(2,4,e.size,e.size*0.6,0,0,Math.PI*2);ctx.fill();
+                if(e.isBoss){
+                    ctx.shadowColor='#ff00ff';ctx.shadowBlur=20;
+                    ctx.fillStyle='#ff00ff';ctx.strokeStyle='#ffaaff';ctx.lineWidth=3;
+                    ctx.beginPath();ctx.arc(0,0,e.size,0,Math.PI*2);ctx.fill();ctx.stroke();
+                    ctx.shadowBlur=0;ctx.strokeStyle='#ff88ff';ctx.lineWidth=2;
+                    ctx.beginPath();ctx.arc(0,0,e.size*0.6,0,Math.PI*2);ctx.stroke();
+                    ctx.fillStyle='#fff';ctx.font=`${Math.floor(e.size*0.7)}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('💀',0,0);
+                    ctx.rotate(e.angle);ctx.fillStyle='#cc00cc';ctx.strokeStyle='#ffaaff';ctx.lineWidth=2;
+                    ctx.fillRect(e.size*0.2,-5,e.size+10,10);ctx.strokeRect(e.size*0.2,-5,e.size+10,10);
+                } else {
+                    ctx.fillStyle=e.color;ctx.strokeStyle='#fff';ctx.lineWidth=1.5;
+                    ctx.beginPath();ctx.arc(0,0,e.size,0,Math.PI*2);ctx.fill();ctx.stroke();
+                    ctx.rotate(e.angle);ctx.fillStyle=e.color;ctx.strokeStyle='#fff';
+                    ctx.fillRect(e.size*0.3,-3,e.size,6);ctx.strokeRect(e.size*0.3,-3,e.size,6);
+                }
+                ctx.restore();
+                const barW=e.isBoss?e.size*3:e.size*2,barH=e.isBoss?6:4;
+                const barX=e.x-barW/2,barY=e.y-e.size-(e.isBoss?16:10);
+                ctx.fillStyle='#333';ctx.fillRect(barX,barY,barW,barH);
+                const hpR=e.health/e.maxHealth;
+                ctx.fillStyle=e.isBoss?'#ff44ff':hpR>0.5?'#44ff44':hpR>0.25?'#ffaa00':'#ff4444';
+                ctx.fillRect(barX,barY,barW*hpR,barH);
+                if(e.isBoss){ctx.strokeStyle='#ff88ff';ctx.lineWidth=1;ctx.strokeRect(barX,barY,barW,barH);}
+            });
+
+            // Player
+            const p=game.player;
+            if(game.state!=='gameover'){
+                ctx.save();ctx.translate(p.x,p.y);
+                ctx.fillStyle='rgba(0,0,0,0.3)';ctx.beginPath();ctx.ellipse(2,4,p.size,p.size*0.6,0,0,Math.PI*2);ctx.fill();
+                const gr=ctx.createRadialGradient(0,0,0,0,0,p.size);
+                gr.addColorStop(0,'#66dd66');gr.addColorStop(1,'#228822');
+                ctx.fillStyle=gr;ctx.strokeStyle='#aaffaa';ctx.lineWidth=2;
+                ctx.beginPath();ctx.arc(0,0,p.size,0,Math.PI*2);ctx.fill();ctx.stroke();
+                ctx.rotate(p.angle);ctx.fillStyle='#44aa44';ctx.strokeStyle='#aaffaa';
+                ctx.fillRect(p.size*0.3,-4,p.size+5,8);ctx.strokeRect(p.size*0.3,-4,p.size+5,8);
+                ctx.restore();
+            }
+
+            // Bullets
+            game.bullets.forEach(b=>{
+                if(b.isCrit){
+                    ctx.fillStyle='#ffdd00';ctx.shadowColor='#ffaa00';ctx.shadowBlur=14;
+                    ctx.beginPath();ctx.arc(b.x,b.y,5,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+                } else {
+                    ctx.fillStyle=b.owner==='turret'?'#66ccff':'#ffff44';
+                    ctx.shadowColor=b.owner==='turret'?'#66ccff':'#ffff44';ctx.shadowBlur=8;
+                    ctx.beginPath();ctx.arc(b.x,b.y,4,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+                }
+            });
+
+            game.enemyBullets.forEach(b=>{
+                ctx.fillStyle=b.isBoss?'#ff44ff':'#ff6644';
+                ctx.shadowColor=b.isBoss?'#ff44ff':'#ff6644';
+                ctx.shadowBlur=b.isBoss?12:8;
+                ctx.beginPath();ctx.arc(b.x,b.y,b.isBoss?5:3.5,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+            });
+
+            game.particles.forEach(pt=>{
+                const alpha=pt.life/pt.maxLife;ctx.globalAlpha=alpha;ctx.fillStyle=pt.color;
+                ctx.beginPath();ctx.arc(pt.x,pt.y,pt.size*alpha,0,Math.PI*2);ctx.fill();
+            });
+            ctx.globalAlpha=1;
+
+            // Crit float texts
+            critFloats.forEach(f=>{
+                const alpha=f.life/f.maxLife;
+                ctx.globalAlpha=alpha;
+                ctx.fillStyle='#ffdd00';
+                ctx.strokeStyle='#aa6600';
+                ctx.lineWidth=3;
+                ctx.font='bold 20px Segoe UI';
+                ctx.textAlign='center';
+                ctx.strokeText(f.text,f.x,f.y);
+                ctx.fillText(f.text,f.x,f.y);
+            });
+            ctx.globalAlpha=1;
+        }
+
+        // ─── SHOP ───
+        function openShop() {
+            game.state='shop';
+            document.getElementById('shop-panel').style.display='block';
+            refreshShop();
+        }
+
+        function makeBtn(parent, name, level, maxLvl, desc, extraHtml, cost, maxed, disabled, onClick) {
+            const btn=document.createElement('button');
+            btn.className='shop-btn';btn.disabled=maxed||disabled;
+            btn.innerHTML=`
+                <div class="btn-name">${name}</div>
+                <div class="btn-level">Level ${level}/${maxLvl}</div>
+                <div class="btn-desc">${desc}</div>
+                ${extraHtml}
+                <div class="btn-cost">${maxed?'MAXED':`Cost: ${cost} coins`}</div>
+            `;
+            btn.onclick=onClick;parent.appendChild(btn);
+        }
+
+        function refreshShop() {
+            const p=game.player;
+            const stats=getPlayerStats();
+            document.getElementById('shop-coins').textContent=`💰 Coins: ${game.coins}`;
+
+            // ─── TANK UPGRADES ───
+            const tankDiv=document.getElementById('tank-upgrades');
+            tankDiv.innerHTML='';
+
+            const tankList = [
+                { key:'speed', lvlKey:'speedLvl', label:'⚡ Speed', max:MAX_LEVEL,
+                  desc:()=>`+${(0.4*getTierMultiplier(p.speedLvl)).toFixed(1)} move speed`,
+                  stat:()=>`Current: ${stats.speed.toFixed(1)}` },
+                { key:'damage', lvlKey:'damageLvl', label:'💥 Damage', max:MAX_LEVEL,
+                  desc:()=>`+${(5*getTierMultiplier(p.damageLvl)).toFixed(0)} bullet damage`,
+                  stat:()=>`Current: ${Math.floor(stats.damage)}` },
+                { key:'health', lvlKey:'healthLvl', label:'❤️ Health', max:MAX_LEVEL,
+                  desc:()=>`+${(25*getTierMultiplier(p.healthLvl)).toFixed(0)} max health`,
+                  stat:()=>`Current: ${stats.maxHealth}` },
+                { key:'armor', lvlKey:'armorLvl', label:'🛡️ Armor', max:MAX_LEVEL,
+                  desc:()=>`+${(15*getTierMultiplier(p.armorLvl)).toFixed(0)} max armor`,
+                  stat:()=>`Current: ${stats.maxArmor}` },
+                { key:'fireRate', lvlKey:'fireRateLvl', label:'🔫 Fire Rate', max:MAX_LEVEL,
+                  desc:()=>`-${(3*getTierMultiplier(p.fireRateLvl)).toFixed(1)}ms cooldown`,
+                  stat:()=>`Current: ${stats.fireRate.toFixed(0)}ms` },
+                { key:'critChance', lvlKey:'critChanceLvl', label:'🎯 Crit Chance', max:CRIT_CHANCE_MAX,
+                  desc:()=>'+5% critical hit chance',
+                  stat:()=>`Current: ${Math.floor(stats.critChance*100)}%` },
+                { key:'critDmg', lvlKey:'critDmgLvl', label:'💎 Crit Damage', max:CRIT_DMG_MAX,
+                  desc:()=>'+0.05x crit multiplier',
+                  stat:()=>`Current: ${stats.critDmg.toFixed(2)}x` },
+            ];
+
+            tankList.forEach(u=>{
+                const lvl=p[u.lvlKey];
+                const cost=getUpgradeCost(u.key,lvl);
+                const maxed=lvl>=u.max;
+                const tierInfo = u.max === MAX_LEVEL && lvl < u.max
+                    ? `<div class="btn-bonus">Tier ${getTier(lvl)+1} (${getTierMultiplier(lvl).toFixed(1)}x bonus)</div>` : '';
+                const statInfo = `<div class="btn-stat">${u.stat()}</div>`;
+                makeBtn(tankDiv, u.label, lvl, u.max, u.desc(), tierInfo+statInfo, cost, maxed, game.coins<cost, ()=>buyTankUpgrade(u.key,u.lvlKey,cost,u.max));
+            });
+
+            // ─── GUN TURRETS ───
+            const turretDiv=document.getElementById('turret-shop');
+            turretDiv.innerHTML='';
+            const tc=game.turrets.length;
+            if(tc<4){
+                const cost=getTurretCost();
+                makeBtn(turretDiv,'🏗️ Buy Gun Turret',`${tc}`,4,'Auto-fires at nearest enemy','',cost,false,game.coins<cost,()=>buyTurret(cost));
+            } else {
+                const btn=document.createElement('button');btn.className='shop-btn';btn.disabled=true;
+                btn.innerHTML='<div class="btn-name">🏗️ Gun Turret</div><div class="btn-level">4/4 — MAXED</div>';turretDiv.appendChild(btn);
+            }
+            if(tc>0){
+                const pairs = [
+                    {key:'firerate', prop:'turretFireRateLvl', label:'🔥 Turret Fire Rate', desc:()=>`-${(10*getTierMultiplier(game.turretFireRateLvl)).toFixed(0)}ms cooldown`, stat:()=>`Current: ${getTurretFR().toFixed(0)}ms`},
+                    {key:'damage',   prop:'turretDamageLvl',   label:'💥 Turret Damage',    desc:()=>`+${(3*getTierMultiplier(game.turretDamageLvl)).toFixed(1)} damage`,        stat:()=>`Current: ${getTurretDmg().toFixed(1)}`},
+                    {key:'range',    prop:'turretRangeLvl',    label:'📡 Turret Range',     desc:()=>`+${(20*getTierMultiplier(game.turretRangeLvl)).toFixed(0)}px range`,       stat:()=>`Current: ${getTurretRange().toFixed(0)}px`},
+                ];
+                pairs.forEach(u=>{
+                    const lvl=game[u.prop],cost=getTurretUpgradeCost(u.key,lvl);
+                    const tier=`<div class="btn-bonus">Tier ${getTier(lvl)+1} (${getTierMultiplier(lvl).toFixed(1)}x)</div>`;
+                    const stat=`<div class="btn-stat">${u.stat()}</div>`;
+                    makeBtn(turretDiv,u.label,lvl,MAX_LEVEL,u.desc(),tier+stat,cost,lvl>=MAX_LEVEL,game.coins<cost,()=>{
+                        if(game.coins>=cost){game.coins-=cost;game[u.prop]++;refreshShop();}
+                    });
+                });
+            }
+
+            // ─── TESLA TURRETS ───
+            const teslaDiv=document.getElementById('tesla-shop');
+            teslaDiv.innerHTML='';
+            const tec=game.teslas.length;
+            if(tec<4){
+                const cost=getTeslaCost();
+                makeBtn(teslaDiv,'⚡ Buy Tesla Turret',`${tec}`,4,'Zaps ALL enemies in range (AoE)','',cost,false,game.coins<cost,()=>buyTesla(cost));
+            } else {
+                const btn=document.createElement('button');btn.className='shop-btn';btn.disabled=true;
+                btn.innerHTML='<div class="btn-name">⚡ Tesla Turret</div><div class="btn-level">4/4 — MAXED</div>';teslaDiv.appendChild(btn);
+            }
+            if(tec>0){
+                const pairs = [
+                    {key:'damage', prop:'teslaDamageLvl', label:'⚡ Tesla Damage', desc:()=>`+${(2*getTierMultiplier(game.teslaDamageLvl)).toFixed(1)} AoE dmg`, stat:()=>`Current: ${getTeslaDmg().toFixed(1)}`},
+                    {key:'range',  prop:'teslaRangeLvl',  label:'📡 Tesla Range',  desc:()=>`+${(20*getTierMultiplier(game.teslaRangeLvl)).toFixed(0)}px radius`, stat:()=>`Current: ${getTeslaRange().toFixed(0)}px`},
+                ];
+                pairs.forEach(u=>{
+                    const lvl=game[u.prop],cost=getTeslaUpgradeCost(u.key,lvl);
+                    const tier=`<div class="btn-bonus">Tier ${getTier(lvl)+1} (${getTierMultiplier(lvl).toFixed(1)}x)</div>`;
+                    const stat=`<div class="btn-stat">${u.stat()}</div>`;
+                    makeBtn(teslaDiv,u.label,lvl,MAX_LEVEL,u.desc(),tier+stat,cost,lvl>=MAX_LEVEL,game.coins<cost,()=>{
+                        if(game.coins>=cost){game.coins-=cost;game[u.prop]++;refreshShop();}
+                    });
+                });
+            }
+        }
+
+        function buyTankUpgrade(key, lvlKey, cost, maxLvl) {
+            const p=game.player;
+            if(game.coins<cost||p[lvlKey]>=maxLvl)return;
+            game.coins-=cost;
+            const oldStats=getPlayerStats();
+            p[lvlKey]++;
+            const newStats=getPlayerStats();
+
+            // Sync health/armor on max increase
+            if(newStats.maxHealth > oldStats.maxHealth) {
+                const added = newStats.maxHealth - oldStats.maxHealth;
+                p.health = Math.min((p.health||oldStats.maxHealth) + added, newStats.maxHealth);
+            }
+            if(newStats.maxArmor > oldStats.maxArmor) {
+                const added = newStats.maxArmor - oldStats.maxArmor;
+                p.armor = Math.min((p.armor||0) + added, newStats.maxArmor);
+            }
+            refreshShop();
+        }
+
+        function buyTurret(cost) {
+            if(game.coins<cost||game.turrets.length>=4)return;
+            game.coins-=cost;
+            const off=[{x:-120,y:-120},{x:120,y:-120},{x:-120,y:120},{x:120,y:120}];
+            const o=off[game.turrets.length];
+            game.turrets.push({x:Math.max(30,Math.min(canvas.width-30,game.player.x+o.x)),
+                y:Math.max(30,Math.min(canvas.height-30,game.player.y+o.y)),angle:0,lastShot:0});
+            refreshShop();
+        }
+
+        function buyTesla(cost) {
+            if(game.coins<cost||game.teslas.length>=4)return;
+            game.coins-=cost;
+            const off=[{x:-80,y:0},{x:80,y:0},{x:0,y:-80},{x:0,y:80}];
+            const o=off[game.teslas.length];
+            game.teslas.push({x:Math.max(30,Math.min(canvas.width-30,game.player.x+o.x)),
+                y:Math.max(30,Math.min(canvas.height-30,game.player.y+o.y)),lastShot:0,pulseTimer:0});
+            refreshShop();
+        }
+
+        document.getElementById('continue-btn').addEventListener('click',()=>{
+            document.getElementById('shop-panel').style.display='none';
+            game.state='playing';
+            const stats=getPlayerStats();
+            game.player.health=Math.min(game.player.health+stats.maxHealth*0.2,stats.maxHealth);
+            game.player.armor=stats.maxArmor;
+            startWave();
+        });
+
+        function gameOver() {
+            game.state='gameover';
+            document.getElementById('game-over').style.display='block';
+            document.getElementById('go-wave').textContent=`You reached wave ${game.wave}`;
+            document.getElementById('go-kills').textContent=`Total kills: ${game.kills}`;
+        }
+
+        document.getElementById('restart-btn').addEventListener('click',()=>{
+            document.getElementById('game-over').style.display='none';
+            document.getElementById('shop-panel').style.display='none';
+            initGame();
+        });
+
+        function dist(x1,y1,x2,y2){return Math.hypot(x2-x1,y2-y1);}
+        function loop(){update();draw();requestAnimationFrame(loop);}
+        initGame();
+        loop();
+    </script>
+</body>
+</html>
